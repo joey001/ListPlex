@@ -41,6 +41,7 @@ namespace ListPlex{
         Stack<int> * const exclStack;
         const int hopSz, hop2Sz;
         const vector<uint8_t>& commonMtx;
+        vector<std::pair<int,int> > vp;
 
         KplexListor(Graph &_subg,MaximalityChecker *_plexMaxChecker, Emitor *_emitor,
                     Stack<int> *_plex, VtxSet *_cand1, VtxSet *_cand2, VtxSet *_excl, VtxSet *_exclBK, Stack<int> *_exclStack,
@@ -337,6 +338,7 @@ namespace ListPlex{
                 listByCase();
                 return;
             }
+            if(k>2 && bound12()) return;
             //br0;
             int v2delete=cand2BackToExclInc();
             kSearch(res);
@@ -628,6 +630,71 @@ namespace ListPlex{
             delete listorBK;
         }
         
+        bool bound1() {
+            vp.clear();
+            for(int i = 0;i < plex->sz;i ++) vp.push_back(std::make_pair(k-(plex->sz-neiInP[plex->members[i]]), plex->members[i]));
+            // for(ui i = 0;i < P_end;i ++) vp.push_back(std::make_pair(-(neiInG[PC[i]]-neiInP[PC[i]]), PC[i]));
+            sort(vp.begin(), vp.end());
+            int UB = plex->sz, cursor = 0;
+            for(int i = 0;i < (int)vp.size(); i++) {
+                int u = vp[i].second;
+                if(vp[i].first == 0) continue;
+                int count = 0;
+                for(int j = cursor;j < cand1->sz;j ++) if(!isAdjMtx(u,cand1->members[j])) {
+                    if(j != cursor + count){
+                        std::swap(cand1->members[j], cand1->members[cursor+count]);
+                        cand1->pos[cand1->members[j]] = j;
+                        cand1->pos[cand1->members[cursor+count]] = cursor+count;
+                    }
+                    ++ count;
+                }
+                int t_ub = count;
+                if(vp[i].first < t_ub) t_ub = vp[i].first;
+                if(UB + t_ub < lb) {
+                    UB += t_ub;
+                    cursor += count;
+                }
+                else return false;
+            }
+            return UB+(cand1->sz-cursor)<lb;
+        }
+
+        bool bound12() {
+            vp.clear();
+            for(int i = 0;i < plex->sz;i ++) vp.push_back(std::make_pair(k-(plex->sz-neiInP[plex->members[i]]), plex->members[i]));
+            sort(vp.begin(), vp.end());
+            int UB = plex->sz, cursor1 = 0, cursor2 = 0;
+            for(int i = 0;i < (int)vp.size(); i++) {
+                int u = vp[i].second;
+                if(vp[i].first == 0) continue;
+                int count1 = 0, count2 = 0;
+                for(int j = cursor1;j < cand1->sz;j ++) if(!isAdjMtx(u,cand1->members[j])) {
+                    if(j != cursor1 + count1){
+                        std::swap(cand1->members[j], cand1->members[cursor1+count1]);
+                        cand1->pos[cand1->members[j]] = j;
+                        cand1->pos[cand1->members[cursor1+count1]] = cursor1+count1;
+                    }
+                    ++ count1;
+                }
+                for(int j = cursor2;j < cand2->sz;j ++) if(!isAdjMtx(u,cand2->members[j])) {
+                    if(j != cursor2 + count2){
+                        std::swap(cand2->members[j], cand2->members[cursor2+count2]);
+                        cand2->pos[cand2->members[j]] = j;
+                        cand2->pos[cand2->members[cursor2+count2]] = cursor2+count2;
+                    }
+                    ++ count2;
+                }
+                int t_ub = count1 + count2;
+                if(vp[i].first < t_ub) t_ub = vp[i].first;
+                if(UB + t_ub < lb) {
+                    UB += t_ub;
+                    cursor1 += count1;
+                    cursor2 += count2;
+                }
+                else return false;
+            }
+            return UB+(cand1->sz-cursor1)+(cand2->sz-cursor2)<lb;
+        }
 
         void listByCase()
         {
@@ -642,6 +709,7 @@ namespace ListPlex{
                 }
                 return;
             }
+            if(k>2 && bound1()) return;
             int minnei=INT_MAX;int pivot;
             auto maxswap = [&](int u) {
                 if (neiInG[u] < minnei)

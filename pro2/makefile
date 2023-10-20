@@ -1,6 +1,6 @@
 FLAG = -g --std=c++14 -msse4.2 -O3 -Ofast -fopenmp -DOPENMP
 
-#FLAG = -g --std=c++14 -O2 
+#FLAG = -g --std=c++14 -O0
 ifdef PROMPT
 	FLAG := $(FLAG) -DPROMPT
 endif
